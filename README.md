@@ -19,10 +19,14 @@ Two launchd jobs cooperate because macOS sandboxes their capabilities:
 ## Install
 
 ```bash
-git clone <this repo> ~/blocker && cd ~/blocker
-sudo ./install.sh root      # apps + websites
-# or:
-./install.sh                # apps only, no sudo
+git clone https://github.com/amitejmehta/blocker.git ~/blocker && cd ~/blocker
+sudo ./install.sh root
+```
+
+Or, apps only (no sudo, no website blocking):
+
+```bash
+./install.sh
 ```
 
 First run copies `config.example.json` to `config.json`. Edit `config.json` to set your schedule — changes apply within 0.3s.
