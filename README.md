@@ -11,7 +11,7 @@ A ~250-line Swift daemon that blocks Mac apps and websites on a schedule. Menu b
 
 ## How it works
 
-Two launchd jobs cooperate because macOS sandboxes their capabilities:
+Two `launchd` jobs split the work, because macOS scopes each one's capabilities differently:
 
 - **User LaunchAgent** (runs as you) — polls every 0.3s, `pkill`s any blocked app. Hosts the menu bar item. Can't touch `/etc/hosts`.
 - **Root LaunchDaemon** (runs as root) — manages the `/etc/hosts` section. Can't see GUI apps from its session, so it doesn't try.
