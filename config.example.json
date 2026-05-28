@@ -2,7 +2,7 @@
   "_comment": "Times are local. days: 0=Mon..6=Sun. Apps are bundle IDs (find with: osascript -e 'id of app \"Slack\"'). Domains block bare host and www.host; root install required for website blocking.",
   "schedules": [
     {
-      "name": "Morning focus block",
+      "name": "Morning focus (no Slack)",
       "start": "09:30",
       "end": "11:00",
       "days": [0, 1, 2, 3, 4],
@@ -16,7 +16,7 @@
       ]
     },
     {
-      "name": "Afternoon focus block",
+      "name": "Afternoon focus (no Slack)",
       "start": "14:00",
       "end": "15:30",
       "days": [0, 1, 2, 3, 4],
