@@ -23,7 +23,12 @@ struct Schedule: Decodable {
     let apps: [String]
     let domains: [String]
 }
-struct Config: Decodable { let schedules: [Schedule] }
+struct Config: Decodable {
+    let schedules: [Schedule]
+    /// Whether the menu bar icon is shown. Defaults to true if omitted.
+    /// Changes require reloading the agent (launchctl bootout + bootstrap).
+    let menuBar: Bool?
+}
 
 func baseDir() -> URL {
     URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
@@ -183,7 +188,7 @@ final class Blocker: NSObject {
         FileHandle.standardOutput.write(
             "[blocker] started uid=\(getuid()) role=\(isRoot ? "hosts" : "apps")\n"
                 .data(using: .utf8)!)
-        if !isRoot { setupMenuBar() }
+        if !isRoot && (loadConfig()?.menuBar ?? true) { setupMenuBar() }
         Timer.scheduledTimer(withTimeInterval: POLL_INTERVAL, repeats: true) { [weak self] _ in
             self?.tick()
         }

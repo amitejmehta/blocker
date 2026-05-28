@@ -7,7 +7,7 @@ A ~250-line Swift daemon that blocks Mac apps and websites on a schedule. Menu b
 - **Blocks Mac apps** — kills any listed app within ~0.3s of launch via `pkill -9` against the app bundle's executable path. Session-independent, so it works on Electron apps, helpers, anything.
 - **Blocks websites across all browsers** — rewrites a managed section of `/etc/hosts` to null-route listed domains. Works for Safari, Chrome, Firefox, Arc — anything that uses system DNS. (Caveat: browsers with DNS-over-HTTPS enabled bypass `/etc/hosts`. Turn off "Secure DNS" in browser settings for the block to bite.)
 - **Schedule** — per-weekday time windows in a JSON file. Hot-reloaded every 0.3s, no restart needed.
-- **Menu bar** — 🛡 icon with today's kill count, dropdown shows last 7 days.
+- **Menu bar** — 🛡 icon with today's kill count, dropdown shows last 7 days. Set `"menuBar": false` in `config.json` to hide it.
 
 ## How it works
 
