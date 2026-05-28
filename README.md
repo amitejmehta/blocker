@@ -50,7 +50,7 @@ First run copies `config.example.json` to `config.json`. Edit `config.json` to s
 
 Find an app's bundle ID with `osascript -e 'id of app "Slack"'`.
 
-Or paste this prompt into Claude / ChatGPT and fill in the blanks:
+Or paste this prompt into Claude Code / Codex and fill in the blanks:
 
 ```
 Add a new schedule to ~/blocker/config.json matching the format in
@@ -69,7 +69,7 @@ awk '{print substr($1,1,10)}' ~/blocker/kills.log | sort | uniq -c   # per day
 awk '{print $2}' ~/blocker/kills.log | sort | uniq -c | sort -rn     # per app
 ```
 
-Or paste this prompt into Claude / ChatGPT:
+Or paste this prompt into Claude Code / Codex:
 
 ```
 Analyze ~/blocker/kills.log (TSV: ISO-timestamp, bundle-id). Tell me
