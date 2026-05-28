@@ -1,0 +1,54 @@
+# blocker
+
+A ~250-line Swift daemon that blocks Mac apps and websites on a schedule. Menu bar item shows today's kill count.
+
+## What it does
+
+- **Blocks Mac apps** — kills any listed app within ~0.3s of launch via `pkill -9` against the app bundle's executable path. Session-independent, so it works on Electron apps, helpers, anything.
+- **Blocks websites across all browsers** — rewrites a managed section of `/etc/hosts` to null-route listed domains. Works for Safari, Chrome, Firefox, Arc — anything that uses system DNS. (Caveat: browsers with DNS-over-HTTPS enabled bypass `/etc/hosts`. Turn off "Secure DNS" in browser settings for the block to bite.)
+- **Schedule** — per-weekday time windows in a JSON file. Hot-reloaded every 0.3s, no restart needed.
+- **Menu bar** — 🛡 icon with today's kill count, dropdown shows last 7 days.
+
+## How it works
+
+Two launchd jobs cooperate because macOS sandboxes their capabilities:
+
+- **User LaunchAgent** (runs as you) — polls every 0.3s, `pkill`s any blocked app. Hosts the menu bar item. Can't touch `/etc/hosts`.
+- **Root LaunchDaemon** (runs as root) — manages the `/etc/hosts` section. Can't see GUI apps from its session, so it doesn't try.
+
+## Install
+
+```bash
+git clone <this repo> ~/blocker && cd ~/blocker
+sudo ./install.sh root      # apps + websites
+# or:
+./install.sh                # apps only, no sudo
+```
+
+First run copies `config.example.json` to `config.json`. Edit `config.json` to set your schedule — changes apply within 0.3s.
+
+## Config schema
+
+```json
+{
+  "schedules": [
+    {
+      "name": "...",
+      "start": "09:00",       // local time, 24h
+      "end":   "13:00",       // same-day windows only (start < end)
+      "days":  [0,1,2,3,4],   // 0=Mon..6=Sun
+      "apps":  ["com.tinyspeck.slackmacgap"],
+      "domains": ["twitter.com"]
+    }
+  ]
+}
+```
+
+Find an app's bundle ID with `osascript -e 'id of app "Slack"'`.
+
+## Uninstall
+
+```bash
+sudo ./install.sh uninstall-root   # both daemons + cleans /etc/hosts
+./install.sh uninstall             # user-mode only
+```

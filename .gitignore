@@ -1,0 +1,9 @@
+# Compiled binary
+blocker
+
+# Personal data — your schedule and usage history
+config.json
+kills.log
+
+# macOS cruft
+.DS_Store
