@@ -1,14 +1,13 @@
 // Scheduled app + website blocker for macOS.
 //
 // Build:   swiftc blocker.swift -o blocker
-// Run:     ./blocker            (user mode: kills apps, shows menu bar item)
-//          sudo ./blocker       (root mode: manages /etc/hosts, headless)
+// Run:     ./blocker            (user mode: kills apps)
+//          sudo ./blocker       (root mode: manages /etc/hosts)
 //
 // Config:  config.json next to the binary.
 // Kill log: kills.log next to the binary (TSV: ISO-timestamp \t bundle-id).
 
 import Foundation
-import AppKit
 
 let MARK_BEGIN = "# >>> blocker managed >>>"
 let MARK_END   = "# <<< blocker managed <<<"
@@ -23,12 +22,7 @@ struct Schedule: Decodable {
     let apps: [String]
     let domains: [String]
 }
-struct Config: Decodable {
-    let schedules: [Schedule]
-    /// Whether the menu bar icon is shown. Defaults to true if omitted.
-    /// Changes require reloading the agent (launchctl bootout + bootstrap).
-    let menuBar: Bool?
-}
+struct Config: Decodable { let schedules: [Schedule] }
 
 func baseDir() -> URL {
     URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
@@ -144,127 +138,46 @@ let isoFormatter: ISO8601DateFormatter = {
 
 func appendKill(_ bid: String) {
     let line = "\(isoFormatter.string(from: Date()))\t\(bid)\n"
-    if let data = line.data(using: .utf8) {
-        if FileManager.default.fileExists(atPath: KILLS_URL.path) {
-            if let h = try? FileHandle(forWritingTo: KILLS_URL) {
-                h.seekToEndOfFile(); h.write(data); try? h.close()
-            }
-        } else {
-            try? data.write(to: KILLS_URL)
+    guard let data = line.data(using: .utf8) else { return }
+    if FileManager.default.fileExists(atPath: KILLS_URL.path) {
+        if let h = try? FileHandle(forWritingTo: KILLS_URL) {
+            h.seekToEndOfFile(); h.write(data); try? h.close()
         }
+    } else {
+        try? data.write(to: KILLS_URL)
     }
 }
 
-/// Returns [YYYY-MM-DD: count] for the kill log.
-func killCountsByDay() -> [(String, Int)] {
-    guard let text = try? String(contentsOf: KILLS_URL, encoding: .utf8) else { return [] }
-    var counts: [String: Int] = [:]
-    for line in text.split(separator: "\n") {
-        // line: "2026-05-28T13:24:01Z\tcom.example.app" — day is first 10 chars
-        guard line.count >= 10 else { continue }
-        let day = String(line.prefix(10))
-        counts[day, default: 0] += 1
-    }
-    return counts.sorted { $0.key > $1.key }
-}
+// MARK: - Main loop
 
-func today() -> String {
-    let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
-    f.timeZone = .current
-    return f.string(from: Date())
-}
+let isRoot = (getuid() == 0)
+FileHandle.standardOutput.write(
+    "[blocker] started uid=\(getuid()) role=\(isRoot ? "hosts" : "apps")\n"
+        .data(using: .utf8)!)
 
-// MARK: - Controller
+var lastDomains: Set<String>? = nil
+// Bundles pkill killed on the previous tick; used to dedupe so that one
+// open-then-killed event records as a single kill rather than one per tick.
+var lastKilled: Set<String> = []
 
-final class Blocker: NSObject {
-    let isRoot = (getuid() == 0)
-    var statusItem: NSStatusItem?
-    var lastDomains: Set<String>? = nil
-    /// Bundles that pkill killed on the previous tick; used to dedupe so that
-    /// one open-then-killed event records as a single kill rather than one per tick.
-    var lastKilled: Set<String> = []
-
-    func start() {
-        FileHandle.standardOutput.write(
-            "[blocker] started uid=\(getuid()) role=\(isRoot ? "hosts" : "apps")\n"
-                .data(using: .utf8)!)
-        if !isRoot && (loadConfig()?.menuBar ?? true) { setupMenuBar() }
-        Timer.scheduledTimer(withTimeInterval: POLL_INTERVAL, repeats: true) { [weak self] _ in
-            self?.tick()
-        }
-    }
-
-    func tick() {
-        guard let cfg = loadConfig() else { return }
+while true {
+    if let cfg = loadConfig() {
         let (apps, domains) = blockedNow(cfg)
         if isRoot {
-            if domains != lastDomains { updateHosts(domains); lastDomains = domains }
+            if domains != lastDomains {
+                updateHosts(domains); lastDomains = domains
+            }
         } else {
-            killApps(apps)
-        }
-    }
-
-    func killApps(_ blocked: Set<String>) {
-        var killedThisTick: Set<String> = []
-        for bid in blocked {
-            guard let path = bundlePath(for: bid) else { continue }
-            let status = shell("/usr/bin/pkill", ["-9", "-f", path])
-            if status == 0 {
-                killedThisTick.insert(bid)
-                if !lastKilled.contains(bid) {
-                    appendKill(bid)
-                    refreshMenuBar()
+            var killedThisTick: Set<String> = []
+            for bid in apps {
+                guard let path = bundlePath(for: bid) else { continue }
+                if shell("/usr/bin/pkill", ["-9", "-f", path]) == 0 {
+                    killedThisTick.insert(bid)
+                    if !lastKilled.contains(bid) { appendKill(bid) }
                 }
             }
+            lastKilled = killedThisTick
         }
-        lastKilled = killedThisTick
     }
-
-    // MARK: Menu bar
-
-    func setupMenuBar() {
-        NSApp.setActivationPolicy(.accessory)
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem = item
-        refreshMenuBar()
-    }
-
-    @objc func refreshMenuBar() {
-        guard let item = statusItem else { return }
-        let counts = killCountsByDay()
-        let todayCount = counts.first { $0.0 == today() }?.1 ?? 0
-        // Shield emoji + count; concise enough for the menu bar.
-        item.button?.title = "🛡 \(todayCount)"
-
-        let menu = NSMenu()
-        menu.addItem(withTitle: "Kills today: \(todayCount)", action: nil, keyEquivalent: "")
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Recent days", action: nil, keyEquivalent: "")
-        if counts.isEmpty {
-            menu.addItem(withTitle: "  (no kills logged yet)", action: nil, keyEquivalent: "")
-        } else {
-            for (day, n) in counts.prefix(7) {
-                menu.addItem(withTitle: "  \(day): \(n)", action: nil, keyEquivalent: "")
-            }
-        }
-        menu.addItem(.separator())
-        let openLog = NSMenuItem(title: "Open kills.log", action: #selector(openKillsLog),
-                                 keyEquivalent: "")
-        openLog.target = self
-        menu.addItem(openLog)
-        menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit", action: #selector(NSApp.terminate(_:)),
-                              keyEquivalent: "q")
-        menu.addItem(quit)
-        item.menu = menu
-    }
-
-    @objc func openKillsLog() { shell("/usr/bin/open", [KILLS_URL.path]) }
+    Thread.sleep(forTimeInterval: POLL_INTERVAL)
 }
-
-// MARK: - Main
-
-let app = NSApplication.shared
-let controller = Blocker()
-controller.start()
-app.run()

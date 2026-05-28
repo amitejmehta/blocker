@@ -1,6 +1,5 @@
 {
   "_comment": "Times are local. days: 0=Mon..6=Sun. Apps are bundle IDs (find with: osascript -e 'id of app \"Slack\"'). Domains block bare host and www.host; root install required for website blocking.",
-  "menuBar": true,
   "schedules": [
     {
       "name": "Morning focus (no Slack)",
