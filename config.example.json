@@ -2,21 +2,27 @@
   "_comment": "Times are local. days: 0=Mon..6=Sun. Apps are bundle IDs (find with: osascript -e 'id of app \"Slack\"'). Domains block bare host and www.host; root install required for website blocking.",
   "schedules": [
     {
-      "name": "No Slack until 1pm",
-      "start": "00:00",
-      "end": "13:00",
+      "name": "Morning focus block",
+      "start": "09:30",
+      "end": "11:00",
       "days": [0, 1, 2, 3, 4],
       "apps": [
         "com.tinyspeck.slackmacgap"
       ],
-      "domains": []
+      "domains": [
+        "twitter.com",
+        "reddit.com",
+        "news.ycombinator.com"
+      ]
     },
     {
-      "name": "Distracting sites blocked in the morning",
-      "start": "09:00",
-      "end": "12:00",
+      "name": "Afternoon focus block",
+      "start": "14:00",
+      "end": "15:30",
       "days": [0, 1, 2, 3, 4],
-      "apps": [],
+      "apps": [
+        "com.tinyspeck.slackmacgap"
+      ],
       "domains": [
         "twitter.com",
         "reddit.com",
