@@ -50,11 +50,14 @@ First run copies `config.example.json` to `config.json`. Edit `config.json` to s
 
 Find an app's bundle ID with `osascript -e 'id of app "Slack"'`.
 
-### Adding a block via AI
+Or paste this prompt into Claude / ChatGPT and fill in the blanks:
 
-Paste this into Claude / ChatGPT, fill in the blanks, and let it do the JSON edit:
-
-> Add a new schedule to `~/blocker/config.json` matching the format in `~/blocker/config.example.json`. Block **<app names and/or domains>** from **<start>** to **<end>** on **<days>**. For each app name, get the bundle ID by running `osascript -e 'id of app "<name>"'` and use that in the `apps` array.
+```
+Add a new schedule to ~/blocker/config.json matching the format in
+~/blocker/config.example.json. Block <apps and/or domains> from <start>
+to <end> on <days>. For each app, get its bundle ID by running
+`osascript -e 'id of app "<name>"'` and use that in the apps array.
+```
 
 ## Uninstall
 
